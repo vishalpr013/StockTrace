@@ -1,0 +1,19 @@
+<svg width="200" height="40" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Box Icon -->
+  <g transform="translate(5, 5) scale(0.15)">
+    <path d="M20 30L60 10L100 30L60 50L20 30Z" stroke="#06B6D4" stroke-width="8" fill="none" stroke-linejoin="round"/>
+    <path d="M20 30V110L60 130V50L20 30Z" stroke="#0EA5E9" stroke-width="8" fill="none" stroke-linejoin="round"/>
+    <path d="M100 30V110L60 130V50L100 30Z" stroke="#0EA5E9" stroke-width="8" fill="none" stroke-linejoin="round"/>
+    <line x1="35" y1="50" x2="35" y2="95" stroke="#06B6D4" stroke-width="6"/>
+    <line x1="60" y1="40" x2="60" y2="85" stroke="#06B6D4" stroke-width="6"/>
+    <line x1="85" y1="50" x2="85" y2="95" stroke="#06B6D4" stroke-width="6"/>
+  </g>
+  
+  <!-- Arrow -->
+  <path d="M22 18C22 18 26 14 32 18L35 15" stroke="#06B6D4" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M32 13L35 15L33 18" fill="#06B6D4"/>
+  
+  <!-- Text -->
+  <text x="42" y="27" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="white">STOCK</text>
+  <text x="108" y="27" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#06B6D4">TRACE</text>
+</svg>
