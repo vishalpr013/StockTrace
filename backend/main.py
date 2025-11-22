@@ -163,6 +163,98 @@ def get_me(current_user: dict = Depends(get_current_user)):
         "default_warehouse_id": current_user["default_warehouse_id"]
     }
 
+# Password Reset Endpoints
+class RequestOTPRequest(BaseModel):
+    email: str
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
+@app.post("/auth/request-otp")
+def request_password_reset_otp(request: RequestOTPRequest):
+    """Request OTP for password reset"""
+    from password_reset import generate_otp, store_otp, send_otp_email
+    
+    conn, cursor = get_db_cursor()
+    try:
+        # Check if user exists
+        cursor.execute("SELECT email FROM users WHERE email = %s", (request.email,))
+        user = cursor.fetchone()
+        
+        if not user:
+            # Don't reveal if email exists or not for security
+            return {
+                "message": "If the email exists, an OTP has been sent to it."
+            }
+        
+        # Generate and store OTP
+        otp = generate_otp()
+        if not store_otp(request.email, otp):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate OTP. Please try again."
+            )
+        
+        # Send OTP via email
+        if not send_otp_email(request.email, otp):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send OTP email. Please try again."
+            )
+        
+        return {
+            "message": "If the email exists, an OTP has been sent to it.",
+            "otp": otp  # REMOVE THIS IN PRODUCTION! Only for testing
+        }
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/auth/verify-otp")
+def verify_password_reset_otp(request: VerifyOTPRequest):
+    """Verify OTP without resetting password"""
+    from password_reset import verify_otp
+    
+    # Verify OTP
+    if not verify_otp(request.email, request.otp):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+    
+    return {
+        "message": "OTP verified successfully. You can now reset your password."
+    }
+
+@app.post("/auth/reset-password")
+def reset_password_with_otp(request: ResetPasswordRequest):
+    """Reset password using OTP"""
+    from password_reset import verify_otp, reset_password_with_otp
+    
+    # Verify OTP again (for security)
+    if not verify_otp(request.email, request.otp):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+    
+    # Reset password
+    if not reset_password_with_otp(request.email, request.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password. Please try again."
+        )
+    
+    return {
+        "message": "Password reset successfully. You can now login with your new password."
+    }
+
 # User Management Endpoints (Admin Only)
 @app.get("/users")
 def get_users(current_user: dict = Depends(require_admin)):
