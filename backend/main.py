@@ -251,12 +251,45 @@ def delete_user(user_id: str, current_user: dict = Depends(require_admin)):
     
     conn, cursor = get_db_cursor()
     try:
+        # Check if user exists
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if user has created any documents
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM documents WHERE created_by_user_id = %s OR confirmed_by_user_id = %s",
+            (user_id, user_id)
+        )
+        doc_count = cursor.fetchone()['count']
+        
+        if doc_count > 0:
+            # Reassign documents to the current admin user
+            cursor.execute(
+                """UPDATE documents 
+                   SET created_by_user_id = CASE 
+                       WHEN created_by_user_id = %s THEN %s 
+                       ELSE created_by_user_id 
+                   END,
+                   confirmed_by_user_id = CASE 
+                       WHEN confirmed_by_user_id = %s THEN %s 
+                       ELSE confirmed_by_user_id 
+                   END
+                   WHERE created_by_user_id = %s OR confirmed_by_user_id = %s""",
+                (user_id, current_user["id"], user_id, current_user["id"], user_id, user_id)
+            )
+        
+        # Now delete the user
         cursor.execute("DELETE FROM users WHERE id = %s RETURNING id", (user_id,))
         deleted = cursor.fetchone()
         if not deleted:
             raise HTTPException(status_code=404, detail="User not found")
+        
         conn.commit()
-        return {"message": "User deleted successfully"}
+        message = "User deleted successfully"
+        if doc_count > 0:
+            message += f" ({doc_count} document(s) reassigned to you)"
+        return {"message": message}
     finally:
         cursor.close()
         conn.close()
