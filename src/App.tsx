@@ -4,6 +4,7 @@ import { CacheProvider } from './CacheContext';
 import { Layout } from './Layout';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Products } from './pages/Products';
 import { Warehouses } from './pages/Warehouses';
@@ -40,6 +41,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Navigate to="/dashboard" />} />
               <Route path="dashboard" element={<Dashboard />} />
