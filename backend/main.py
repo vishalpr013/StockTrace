@@ -1604,6 +1604,155 @@ def search_suggestions(q: str, current_user: dict = Depends(get_current_user)):
 
     return {"type": "NO_MATCH"}
 
+@app.get("/search/smart")
+def smart_search(q: str, current_user: dict = Depends(get_current_user)):
+    """Smart search with autocomplete suggestions for products, locations, and quick commands"""
+    q_lower = q.lower().strip()
+    results = []
+    
+    conn, cursor = get_db_cursor()
+    try:
+        # Smart queries / Quick commands
+        smart_queries = [
+            ("low stock", "LOW_STOCK", "View Low Stock Items", "Products below minimum stock level"),
+            ("receipts", "RECEIPTS", "View Receipts", "Incoming stock documents"),
+            ("deliveries", "DELIVERIES", "View Deliveries", "Outgoing stock documents"),
+            ("transfers", "TRANSFERS", "View Transfers", "Inter-warehouse transfers"),
+            ("adjustments", "ADJUSTMENTS", "View Adjustments", "Stock adjustments"),
+            ("stock", "STOCK", "View Stock Overview", "Current stock levels"),
+            ("movements", "MOVEMENTS", "View Stock Movements", "All stock transactions"),
+        ]
+        
+        for keyword, type_name, title, subtitle in smart_queries:
+            if keyword.startswith(q_lower) or q_lower in keyword:
+                results.append({
+                    "type": type_name,
+                    "title": title,
+                    "subtitle": subtitle,
+                    "badge": "Quick Action"
+                })
+        
+        # Search Products (by name or SKU)
+        cursor.execute(
+            """SELECT p.id, p.name, p.sku, p.category,
+                      COALESCE(SUM(cs.quantity), 0) as total_stock
+               FROM products p
+               LEFT JOIN current_stock cs ON p.id = cs.product_id
+               WHERE LOWER(p.name) LIKE %s OR LOWER(p.sku) LIKE %s
+               GROUP BY p.id, p.name, p.sku, p.category
+               LIMIT 5""",
+            (f"%{q_lower}%", f"%{q_lower}%")
+        )
+        products = cursor.fetchall()
+        
+        for product in products:
+            # Add product stock view
+            results.append({
+                "type": "PRODUCT_STOCK",
+                "id": product["id"],
+                "title": f"{product['name']} (SKU: {product['sku']})",
+                "subtitle": f"View stock | Category: {product['category']} | Stock: {int(product['total_stock'])} units",
+                "badge": "Product"
+            })
+            
+            # Add product movements view
+            results.append({
+                "type": "PRODUCT_MOVEMENTS",
+                "id": product["id"],
+                "title": f"Movements of {product['name']}",
+                "subtitle": f"View all transactions for {product['sku']}",
+                "badge": "History"
+            })
+        
+        # Search Locations (by name or code)
+        cursor.execute(
+            """SELECT l.id, l.name, l.code, w.name as warehouse_name
+               FROM locations l
+               JOIN warehouses w ON l.warehouse_id = w.id
+               WHERE LOWER(l.name) LIKE %s OR LOWER(l.code) LIKE %s
+               LIMIT 5""",
+            (f"%{q_lower}%", f"%{q_lower}%")
+        )
+        locations = cursor.fetchall()
+        
+        for location in locations:
+            code_str = f" ({location['code']})" if location['code'] else ""
+            results.append({
+                "type": "LOCATION",
+                "id": location["id"],
+                "title": f"{location['name']}{code_str}",
+                "subtitle": f"Location in {location['warehouse_name']}",
+                "badge": "Location"
+            })
+        
+        # Search Warehouses (by name)
+        cursor.execute(
+            """SELECT id, name, address
+               FROM warehouses
+               WHERE LOWER(name) LIKE %s
+               LIMIT 3""",
+            (f"%{q_lower}%",)
+        )
+        warehouses = cursor.fetchall()
+        
+        for warehouse in warehouses:
+            results.append({
+                "type": "WAREHOUSE",
+                "id": warehouse["id"],
+                "title": warehouse["name"],
+                "subtitle": warehouse["address"] or "Warehouse",
+                "badge": "Warehouse"
+            })
+        
+        # If searching for specific stock-related queries
+        if "stock" in q_lower and len(q_lower) > 5:
+            # Extract potential product name after "stock"
+            product_search = q_lower.replace("stock of", "").replace("stock", "").strip()
+            if product_search:
+                cursor.execute(
+                    """SELECT p.id, p.name, p.sku
+                       FROM products p
+                       WHERE LOWER(p.name) LIKE %s OR LOWER(p.sku) LIKE %s
+                       LIMIT 3""",
+                    (f"%{product_search}%", f"%{product_search}%")
+                )
+                stock_products = cursor.fetchall()
+                for product in stock_products:
+                    results.append({
+                        "type": "PRODUCT_STOCK",
+                        "id": product["id"],
+                        "title": f"Stock of {product['name']}",
+                        "subtitle": f"View stock levels for {product['sku']}",
+                        "badge": "Smart Query"
+                    })
+        
+        # If searching for movement-related queries
+        if "movement" in q_lower and len(q_lower) > 8:
+            product_search = q_lower.replace("movements of", "").replace("movement", "").strip()
+            if product_search:
+                cursor.execute(
+                    """SELECT p.id, p.name, p.sku
+                       FROM products p
+                       WHERE LOWER(p.name) LIKE %s OR LOWER(p.sku) LIKE %s
+                       LIMIT 3""",
+                    (f"%{product_search}%", f"%{product_search}%")
+                )
+                movement_products = cursor.fetchall()
+                for product in movement_products:
+                    results.append({
+                        "type": "PRODUCT_MOVEMENTS",
+                        "id": product["id"],
+                        "title": f"Movements of {product['name']}",
+                        "subtitle": f"View transaction history for {product['sku']}",
+                        "badge": "Smart Query"
+                    })
+        
+        return results[:10]  # Limit to top 10 results
+        
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

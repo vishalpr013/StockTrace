@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![StockTrace Logo](src/assets/logo.svg)
+![StockTrace Logo](src/assets/logo-horizontal.svg)
 
 **A modern, full-stack inventory management system built with React and FastAPI**
 
@@ -367,26 +367,6 @@ DELETE /users/{id}               # Delete user
 POST   /users/{id}/approve       # Approve user
 POST   /users/{id}/disapprove    # Disapprove user
 ```
-
----
-
-## 🎨 Screenshots
-
-### Dashboard
-![Dashboard](docs/screenshots/dashboard.png)
-*Real-time analytics, risk alerts, and recent movements*
-
-### Stock Overview
-![Stock Overview](docs/screenshots/stock.png)
-*Filter and search inventory across all locations*
-
-### Document Management
-![Documents](docs/screenshots/documents.png)
-*Create and manage receipts, deliveries, transfers*
-
-### User Management
-![Users](docs/screenshots/users.png)
-*Admin panel for user approval and role management*
 
 ---
 

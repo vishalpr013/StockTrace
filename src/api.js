@@ -287,6 +287,14 @@ export const api = {
     return response.json();
   },
 
+  async smartSearch(query) {
+    const response = await fetch(`${API_URL}/search/smart?q=${encodeURIComponent(query)}`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to search');
+    return response.json();
+  },
+
   // User Management (Admin only)
   async getUsers() {
     const response = await fetch(`${API_URL}/users`, {
